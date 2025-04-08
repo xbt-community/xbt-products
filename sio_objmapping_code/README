@@ -1,0 +1,17 @@
+SIO objective mapping code in fortran
+llehmann@ucsd.edu
+
+Notes:
+
+"q" SIO files (full resolution, QC'd) use Sippican original coefficients
+"e" SIO files (vertically averaged to 2m bins, QC'd) use Sippican original coefficients
+".10" SIO files (10m averaged bins (from "e" files) use Hanawa 1995 coefficients
+
+sio_mapxbt3.f reads ".10" file to output objectively mapped grids (0.1 degree spacing) 
+     (also can create grids: salinity and specific volume anomaly using 
+      a salinity version (.10s) of the .10 file)
+
+See also: http://www-hrx.ucsd.edu/intro.html & http://www-hrx.ucsd.edu/10m.html
+
+Sample included: p131903a.10 and p131903a.tem (input and output for sio_mapxbt3.f)
+
