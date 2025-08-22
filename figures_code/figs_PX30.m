@@ -18,124 +18,20 @@ addpath /datasets/work/soop-xbt/work/UOT/programs/MATLAB/seawater_ver3_3/
 load PX30_data_cleaned.mat
 % change depth_XBT to a double
 depth_xbt = double(depth_xbt);
-%% functions setup
-function out = interp_fun(depths, temps, depth_ref)
-    if numel(depths) > 1
-        out = interp1(depths, temps, depth_ref, 'linear', NaN);
-        % fill missing data near the surface
-        inan = isnan(out(1:5));
-        if sum(inan) > 0 && sum(inan) < 5
-            % find the first instance of non-nan value and fill to surface
-            igood = find(~inan);
-            out(find(inan)) = out(igood(1));
-        end
-    else
-        out = nan(size(depth_ref));
-    end
-end
+% fix one bad latitude point, replace with a estimate
+lat_xbt{47}(47) = -23.333;
 
-function [groups,npf] = findTimestampGroups(timestamps, maxDiff)
-    % findTimestampGroups - Identify groups of timestamps with differences < maxDiff
-    %
-    % Syntax: groups = findTimestampGroups(timestamps, maxDiff)
-    %
-    % Inputs:
-    %   timestamps - Array of timestamps (datetime, datenum, or numeric)
-    %   maxDiff    - Maximum time difference for grouping (default: 2 days)
-    %
-    % Outputs:
-    %   groups - Cell array where each cell contains indices of grouped timestamps
-    
-    if nargin < 2
-        maxDiff = 2; % Default: 2 days
-    end
-    
-    % Sort timestamps and keep track of original indices
-    [sortedTimestamps, sortIdx] = sort(timestamps);
-    n = length(sortedTimestamps);
-    
-    % Initialize variables
-    currentGroup = 1;
-    groupAssignment = ones(n, 1);
-    
-    % Find groups based on time differences
-    for i = 2:n
-        timeDiff = days(sortedTimestamps(i) - sortedTimestamps(i-1));
-        if timeDiff > maxDiff
-            currentGroup = currentGroup + 1;
-        end
-        groupAssignment(i) = currentGroup;
-    end
-    
-    % Create output groups with original indices
-    numGroups = max(groupAssignment);
-    groups = cell(numGroups, 1);
-    npf = zeros(1,numGroups);
-    for g = 1:numGroups
-        groupMembers = find(groupAssignment == g);
-        groups{g} = sort(sortIdx(groupMembers));
-        npf(g) = length(groupMembers);
-    end
-end
-%% create the grid and tidy
-% grid onto depths by grouping by uniqueid
-% [G, station_idx] = findgroups(uniqueid);
-% 
-% TEMP_cell = splitapply(@(d, t) {interp_fun(d, t, depth_xbt)}, ...
-%     DEPTH, TEMP, G);
-% 
-% TEMP_grid = cell2mat(TEMP_cell');
 
-%% clear some variables
-% clear DEPTH LATITUDE LONGITUDE Station_ID TEMP TIME Callsign Cruise_ID ic
-%% index each transect based on days between drops
-% > 2days = new transect
-% [grps, np] = findTimestampGroups(time, 2);
-% [utrans,ib,ic] = unique(transect_number);
-% npf = NaN*ones(1,length(utrans));
-% for a = 1:length(npf)
-%     npf(a) = sum(ic == a);
-% end
 %% focus on only data between 153 and 157.5 longitude and -26.75 to -25.75
-% remove whole transects that have data outside the latitude bounds and any
-% that have no data inside
+
+%Input: depth,temp,xbt_lat,xbt_lon,
+%Output: time_xbt temp_ref lon_ref lat_ref depth_ref npf LONGITUDE LATITUDE
+disp('calc reference section')
 lon_ref_30 = (153.13:0.1:166.83)';
 lon_ref_31 = (166.93:0.1:178.33)';
 lon_ref = [lon_ref_30;lon_ref_31];
 xp = [153.1 153.1 165 178.4 178.4];
 yp = [-22 -29 -26 -20 -14 ];
-for a = 1:length(npf)
-    lon = lon_xbt{a};
-    lat = lat_xbt{a};
-    % remove casts ti = time_xbt{a};outside specified region
-    J = inpolygon(lon,lat,xp ,yp);
-    if any(~J)
-        ti = time_xbt{a};
-        te = temp_xbt{a};
-        lon(~J) = [];
-        lat(~J)=[];
-        ti(~J) = [];
-        te(:,~J) = [];
-        lon_xbt{a} = lon;
-        lat_xbt{a} = lat;
-        temp_xbt{a} = te;
-        time_xbt{a} = ti;
-        npf(a) = sum(J);
-    end
-end
-% remove any transects with less than 10 profiles
-irem = npf < 10;
-lon_xbt(irem) = [];
-lat_xbt(irem) = [];
-temp_xbt(irem) = [];
-time_xbt(irem) = [];
-npf(irem) = [];
-
-%%
-%Input: depth,temp,xbt_lat,xbt_lon,
-%Output: time_xbt temp_ref lon_ref lat_ref depth_ref npf LONGITUDE LATITUDE
-disp('calc reference section')
-
 % grid to reference section [lat_ref & lon_ref] and every 10 dbar [pres_ref]
 % split the lon_ref for half-voyages
 kz = find(depth_xbt<=760);
@@ -149,6 +45,7 @@ nz = length(depth_ref);
 lat_ref = nan(nx_ref,nt);
 % fill in gaps, then interpolate to reference longitude (lon_ref)
 temp_ref = nan(length(depth_ref),nx_ref,nt);
+time_ref = lat_ref;time_ref_noNaN=lat_ref; lat_ref_noNaN=lat_ref;
 for i=1:nt
     % x values must be unique for interp1 therefore, remove any duplicates
     % by removing the dup profile
@@ -156,17 +53,19 @@ for i=1:nt
     tempi = temp_xbt{i};
     lati = lat_xbt{i};
     loni = lon_xbt{i};
-
+    ti = time_xbt{i};
     [loni, ie, id] = unique(loni,'stable');
+
     if length(id) ~= length(ie)
         disp(i)
         lati = lati(ie);
         tempi = tempi(:,ie);
+        ti = ti(ie);
     end
-    if length(loni) < 2
+    if length(loni) < 20
+        % skip any transects with less than 20 profiles
         continue
     end
-    lat_ref(:,i) = interp1(loni,lati,lon_ref,'linear');
 
     % if two profile are close together, which may induce anomous large velocity
     %   average to mid-longitude
@@ -183,7 +82,28 @@ for i=1:nt
         tempi(:,ik+1) = [];
         lati (ik+1) = [];
         loni (ik+1) = [];
+        ti(ik+1) = [];
     end
+    % remove casts outside specified region
+    J = inpolygon(loni,lati,xp ,yp);
+    if any(~J)
+        loni(~J) = [];
+        lati(~J)=[];
+        ti(~J) = [];
+        tempi(:,~J) = [];
+        lon_xbt{i} = loni;
+        lat_xbt{i} = lati;
+        temp_xbt{i} = tempi;
+        time_xbt{i} = ti;
+        npf(i) = sum(J);
+        lat_ref(:,i) = interp1(loni,lati,lon_ref,'linear');
+        time_ref(:,i) = interp1(loni,ti,lon_ref,'linear');
+    else
+        lat_ref(:,i) = interp1(loni,lati,lon_ref,'linear','extrap');
+        time_ref(:,i) = interp1(loni,ti,lon_ref,'linear','extrap');
+    end
+    time_ref_noNaN(:,i) = time_ref(:,i);
+    lat_ref_noNaN(:,i) = lat_ref(:,i);
     for iz = 1:nz_ref
         % fill in gap
         ki = find(~isnan(tempi(iz,:)));
@@ -197,6 +117,8 @@ for i=1:nt
         ki = find(~isnan(tempi(iz,:)));
         temp_ref(iz,:,i) = interp1(loni(ki),tempi(iz,ki),lon_ref)';
     end
+
+
     % backfill with NaNs where the range of longitude does not extend for
     % full lon_ref
     i31 = max(loni) >= min(lon_ref_31);
@@ -206,20 +128,41 @@ for i=1:nt
             %just first part px30
             lat_ref(length(lon_ref_30)+1:end,i) = NaN;
             temp_ref(:, length(lon_ref_30)+1:end,i) = NaN;
+            time_ref(length(lon_ref_30)+1:end,i) = NaN;
         end
         if i31
                         %just px31
             lat_ref(1:length(lon_ref_30),i) = NaN;
             temp_ref(:,1:length(lon_ref_30),i) = NaN;
+            time_ref(1:length(lon_ref_30),i) = NaN;
         end
     end
 end
+% let's remove columns where all the values are NaN (where there has been
+% less than 10 drops
+inan = sum(isnan(lat_ref),1) == size(lat_ref,1);
+inan([37,125]) = 1; % these two voyages are outliers, remove them
+lat_ref(:,inan) = [];
+time_ref(:,inan) = [];
+lat_xbt(inan) = [];
+lon_xbt(inan) = [];
+npf(inan) = [];
+temp_ref(:,:,inan) = [];
+temp_xbt(inan) = [];
+time_xbt(inan) = [];
+lat_ref_noNaN(:,inan) = [];
+time_ref_noNaN(:,inan)=[];
+nt = size(lat_ref,2);
 dlat=(lat_ref-mean(lat_ref,2,'omitmissing'));
 kgood=find(mean(abs(dlat),1,'omitmissing')<=0.25);
 mean_lat_ref=mean(lat_ref(:,kgood),2,'omitmissing');
 
+% use the 67th voyage as the reference line
+mean_lat_ref = lat_ref(:,67);
+
 %save('Output.mat','time_xbt','temp_ref','lon_ref','lat_ref','depth_ref')
 save Output.mat time_xbt temp_ref lon_ref lat_ref depth_ref npf lon_xbt lat_xbt mean_lat_ref
+save('PX30_refline.mat','lon_ref','mean_lat_ref', 'lat_ref','time_ref','time_ref_noNaN','lat_ref_noNaN')
 disp('Done!')
 clear 
 %% =======================Marlos Salinity===========
@@ -264,6 +207,7 @@ load('Output.mat')
 
 [nz_ref,nx_ref,nt] = size(temp_ref);
 [~,ga_refInd] = min(abs(depth_ref-760));  %Reference for dynamic height output (760 m)
+ref_dep = depth_ref(ga_refInd);
 pres_ref = nan(nz_ref,nx_ref);
 % use mean_lat_ref for PX30
 for ix = 1:nx_ref
@@ -276,24 +220,17 @@ for it = 1:nt
     [SA, in_ocean] = gsw_SA_from_SP(salt_ref(:,:,it),pres_ref,lon_ref,lat_ref(:,it));
     CT = gsw_CT_from_t(SA,temp_ref(:,:,it),pres_ref);
     ga = gsw_geo_strf_dyn_height(SA,CT,pres_ref,0);
+
+    inan = ~isnan(ga(1,:));
+    DH_abs=ga*0;
+    [DH_abs(:,inan),addep] = add_abs_gpan(ga(:,inan),lat_ref(inan,it),lon_ref(inan),depth_ref,ref_dep);
+     ga = DH_abs;
     [vel0,mid_lat,mid_lon] = gsw_geostrophic_velocity(ga,lon_ref,lat_ref(:,it),pres_ref);
     lat_vel(:,it) = mid_lat(1,:)';
     lon_vel =  mid_lon(1,:)';
     vel_ref(:,:,it) = vel0;
     dh0_ref(:,it) = -ga(ga_refInd,:)/9.81; %Convert from m2/s2 to meter at surface
 
-end
-    % vel_ref0 is velocity referenced to surface
-    % convert to reference to 760 m or to bottom whichever is shallower
-    disp('reference velocity')
-for it = 1:nt
-    for iy = 1:nx_ref-1
-        kzi = find(~isnan(vel_ref(:,iy,it)),1,'last');
-        if isempty(kzi)
-            kzi = nz_ref;
-        end
-        vel_ref(:,iy,it) = vel_ref(:,iy,it) - vel_ref(kzi,iy,it);
-    end
 end
 
 save -append Output.mat vel_ref lat_vel lon_vel depth_ref dh0_ref
@@ -308,7 +245,7 @@ disp('Calc transport')
 load('Output.mat')
 
 %Define eastern and western boundary for transport calculations in degrees
-BLim = [153.1 158.5];
+BLim = [153.1 166.4];
 
 [nz_ref,ny_ref,nt] = size(temp_ref);
 
@@ -387,14 +324,18 @@ save Output.mat -append mGStransp mGSlon
 clear
 
 %%  set colormaps
-disp('Plotting section')
-addpath /datasets/work/soop-xbt/work/UOT/programs/xbt-products/figures_code/ 
+addpath /datasets/work/soop-xbt/work/UOT/programs/xbt-products/figures_code/colorbar_yyw/ 
 addpath(genpath('/datasets/work/soop-xbt/work/UOT/programs/xbt-products/figures_code/m_map/'))
+clr_T = jet;
+clr_S = colormap_yyw('MPL_rainbow');
+clr_V = colormap_yyw('GMT_polar');
+disp('Plotting section')
+
 clr_topo = m_colmap('blue',256);
 clr_V2 = flipud(othercolor('RdBu11',256)); clr_V2(1,:) = [.7 .7 .7];
-clr_T = cmocean('thermal'); clr_T(1,:) = [.7 .7 .7];
-clr_S = cmocean('haline'); clr_S(1,:) = [.7 .7 .7];
-clr_V = cmocean('balance'); clr_V(1,:) = [.7 .7 .7];
+% clr_T = cmocean('thermal'); clr_T(1,:) = [.7 .7 .7];
+% clr_S = cmocean('haline'); clr_S(1,:) = [.7 .7 .7];
+% clr_V = cmocean('balance'); clr_V(1,:) = [.7 .7 .7];
 xyclr = [.4 .4 .4];
 lon_lim = [151 180];                                   %Define lon lim for map
 lat_lim = [-28 -14];                                     %Define lat lim for map
@@ -427,7 +368,7 @@ for i = 1:length(npf)
     m_plot(lon_xbt{i},lat_xbt{i},'.r','markersize',4)
 end
 
-m_plot(lon_ref,mean(lat_ref,2,'omitmissing'),'k','linewidth',1)
+m_plot(lon_ref,mean_lat_ref,'k','linewidth',1)
 m_grid('tickdir','in','color',xyclr)
 set(gca,'Position',[.05 .56 .24 .36])
 ax=m_contfbar(0.27,[.57 .94],CS,CH,'axfrac',.025);
@@ -491,24 +432,21 @@ text(lon_ref(1),50,'(e) Mean salinity')
 
 % mean velocity
 mvel = mean(vel_ref,3,'omitmissing');
-tmp = mvel;
-tmp(~isnan(tmp)) = 0.65;
-tmp(isnan(tmp)) = -0.65;
 subplot(2,3,6); hold off
 colormap(gca,clr_V2);
-[CS,CH] = contourf(lon_vel,-depth_ref,mvel,-0.8:0.05:0.8,'LineStyle','none');
+[CS,CH] = contourf(lon_vel,-depth_ref,mvel,-0.6:0.05:0.6,'LineStyle','none');
 % contour(lon_vel,-depth_ref,mvel,[0 0],'color',[.7 .7 .7]);
-clim([-0.8 0.8])
+clim([-0.7 0.7])
 colormap(gca,clr_V2);
 set(gca,'color',[.7 .7 .7])
-ax=m_contfbar(1.2,[.05 0.9],CS,CH,'axfrac',.035,'endpiece','no');
-set(ax,'tickdir','in','ylim',[-0.85 0.85],'fontsize',10,'ycolor',xyclr,'xcolor',xyclr)
-set(ax,'ytick',-0.8:0.2:0.8,'yticklabel',-0.8:0.2:0.8)
+ax=m_contfbar(1.2,[.05 0.9],CS,CH,'axfrac',.035,'endpiece','no', 'levels','set');
+set(ax,'tickdir','in','ylim',[-0.6 0.6],'fontsize',10,'ycolor',xyclr,'xcolor',xyclr)
+set(ax,'ytick',-0.6:0.2:0.6,'yticklabel',-0.6:0.2:0.6)
 set(ax,'colormap',clr_V2)
 title(ax,'m/s','FontSize',10,'color',xyclr,'FontWeight','normal')
 set(gca,'Position',[0.7 0.1 0.23 0.35])
-xlim([153.1800 160])
-tick_lon = 154:2:160;
+xlim([153.1 166.4])
+tick_lon = 154:4:166.4;
 label_lon = strcat(num2str(tick_lon'),'\circE');
 set(gca,'xtick',tick_lon,'xticklabel',label_lon,'XTickLabelRotation',0)
 text(lon_ref(1),50,'(f) Mean velocity')
@@ -521,19 +459,29 @@ data2 = str2num(timeYMD(:,1:4))'; %year numbers
 
 %GET DATA RANGE
 axis1 = [min(data1):max(data1)]';
-axis2 = [min(data2):max(data2)]';
+axis2 = [min(data2):max(data2)+1]';
+% make every second year an empty label
+% for ii = 1:2:length(axis2)
+%     axis2(ii) = NaN;
+% end
 
 %create month axis if wanted
-leg1 = {'jan','feb','mar','apr','may','jun','jul','ago','sep','oct','nov','dec'};
+leg1 = {'jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'};
 
 %Add N number of spaces in the middle
 N = 3;
 C = double(npf'); %number of profiles/transect
-
+%axis2 = [axis2(end); axis2(1:end-1)];
+leg2 = cell(1,length(axis2));
+leg2{end} = '';
+for ii=1:length(axis2)-1
+    aux = num2str(axis2(ii));
+    leg2{ii} = aux(end-1:end);
+end
 %MAKE PIE PLOTS
 %1: month, year
 %clf
-[g,col] = make_pie_subplot(axis2,axis1,[],leg1,data2,data1,C,N,[.62 .51 .345 .415]);
+[g,col] = make_pie_subplot2(axis2,axis1,leg2,leg1,data2,data1,C,N,[.62 .51 .345 .415]);
 title(col,'# prof')
 print -dpng -r400 figure1_px30.png
 
