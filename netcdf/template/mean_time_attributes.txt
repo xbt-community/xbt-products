@@ -1,0 +1,5 @@
+S, long_name                 = average time
+N, valid_min                 = 0
+N, valid_max                 = 90000
+N, units                     = days since 1950-01-01 00:00:00 UTC
+S, calendar                  = gregorian
