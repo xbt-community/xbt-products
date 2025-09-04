@@ -1,0 +1,7 @@
+N, FillValue  = NaN
+S, long_name = 
+S, standard_name = 
+S, units = 
+S, reference_scale = 
+N, valid_min =
+N, valid_max =
