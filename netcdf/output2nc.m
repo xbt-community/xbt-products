@@ -185,10 +185,13 @@ for a = 1:length(varname)
         varatts.reference_scale = refscale{a};
     end
     if a == 7 | a == 8% time only dimensional var
+        varatts.coordinates = dimnames{1};
         didv = did(1);
     elseif a == 1 |a == 5 | a ==6 %variables,2 dims
+        varatts.coordinates = [dimnames{1},' ', dimnames{2}] ;
         didv = did([2,1]);
     else % all three dimensions
+        varatts.coordinates = [dimnames{1},' ', dimnames{2}, ' ', dimnames{3}] ;
         didv = fliplr(did);
     end
     
