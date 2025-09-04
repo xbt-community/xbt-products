@@ -75,18 +75,16 @@ lon_ref(ineg) = lon_ref(ineg)-360;
 if lonn < latn
     % east-west line
     ilatlon = 1;
-    lat_ref = mean_lat_ref;
 else
     % north-south line
     ilatlon = 2;
-    lon_ref = mean_lon_ref;
 end
 
 %assign the global attributes:
-globalatts.geospatial_lat_min = min(lat_ref);
-globalatts.geospatial_lat_max = max(lat_ref);
-globalatts.geospatial_lon_min = min(lon_ref);
-globalatts.geospatial_lon_max = max(lon_ref);
+globalatts.geospatial_lat_min = min(min(lat_ref));
+globalatts.geospatial_lat_max = max(max(lat_ref));
+globalatts.geospatial_lon_min = min(min(lon_ref));
+globalatts.geospatial_lon_max = max(max(lon_ref));
 globalatts.geospatial_vertical_min = min(depth_ref);
 globalatts.geospatial_vertical_max = max(depth_ref);
 %also handle the other time* fields here
@@ -106,14 +104,20 @@ for a = 1:length(flds)
     name = flds{a};
     netcdf.putAtt(fidnc, vid, name, globalatts.(flds{a}));
 end
-%% get the dimension attributes templates, using pressure, longitude,
+%% get the dimensions set up
 %dimensions
 %set up the section data:
 sect = 1:length(time_avg);
 
-dimnames = {'time','longitude','latitude','depth'};
-dimdata = {'time_avg','lon_ref','lat_ref','depth_ref'};
-
+%if east-west line: 
+if ilatlon == 1
+    dimnames = {'time','longitude','depth'};
+    dimdata = {'time_avg','lon_ref','depth_ref'};
+else
+    %north-south
+    dimnames = {'time','latitude','depth'};
+    dimdata = {'time_avg','lat_ref','depth_ref'};
+end
 time_avgatts = parseNCTemplate('time_attributes.txt');
 depth_refatts = parseNCTemplate('depth_attributes_gridded.txt');
 lon_refatts = parseNCTemplate('longitude_attributes.txt');
@@ -131,29 +135,45 @@ for m=1:length(dimnames)
         netcdf.putAtt(fidnc,vid(m),fldn{b},atts.(fldn{b}))
     end
 end
-%% now for each variables attributes, DOXY, TEMP, PSAL, CONSERVATIVE TEMP, ABSOLUTE SALINITY 
-
+%% now for each variables attributes
+if ilatlon ==1
+    % east-west
+    loc_var = 'latitude';
+    loc_name = 'lat_ref';
+    loc_units = 'degrees_east';
+    loc_range = [-90, 90];
+else
+    %north-south
+    loc_var = 'longitude';
+    loc_name = 'lon_ref';
+    loc_units = 'degrees_north';
+    loc_range = [-180, 180];
+end
 %populate for each one:
-varname = {'temperature','reference_salinity','velocity','geostrophic_transport','geostrophic_transport_altimetry'};
-dataname = {'temp_ref','salt_ref','vel_ref','GStransp', 'GStransp_alt'};
-stdn = {'sea_water_temperature','sea_water_practical_salinity',...
-    'geostrophic_northward_sea_water_velocity','',...
+varname = {loc_var,'temperature','reference_salinity','velocity','surface_dynamic_height',...
+    'sea_surface_height','geostrophic_transport','altimetric_ssh_gradient'...
+    };
+dataname = {loc_name,'temp_ref','salt_ref','vel_ref','dh0_ref','ssh_ref_px30',...
+    'GStransp', 'GStransp_alt'};
+stdn = {loc_var,'sea_water_temperature','sea_water_practical_salinity',...
+    'geostrophic_northward_sea_water_velocity','','sea_surface_height','',...
     ''};
-long_name = {'sea_water_temperature','sea_water_practical_salinity',...
-    'geostrophic_northward_sea_water_velocity','mass_transport_from_XBT',...
-    'mass_transport_from_altimetry'};
-units = {'degC','1','m s-1','Sv','Sv'}; 
-refscale = {'ITS-90','PSS-78','','',''};
-vmin = [-2.5,2.0,-10,-50,-50];
-vmax = [40.0,41.0,10,50,50];
+long_name = {loc_var,'sea_water_temperature','sea_water_practical_salinity',...
+    'geostrophic_northward_sea_water_velocity',...
+    'absolute_dynamic_height_at_surface','sea_surface_height_altimetry','mass_transport_from_XBT',...
+    'cross_front_delta_ssh'};
+units = {loc_units,'degC','1','m s-1','m','m','Sv','m'}; 
+refscale = {'WGS84 geographic coordinate system','ITS-90','PSS-78','','','','',''};
+vmin = [loc_range(1),-2.5,2.0,-10,-10,-10,-50,-10];
+vmax = [loc_range(2),40.0,41.0,10,10,10,50,10];
 for a = 1:length(varname)
     clear varatts
     if ~isempty(stdn{a})
         varatts.standard_name = stdn{a};
     end
     varatts.long_name = long_name{a};
-    if a <=3
-        varatts.coordinates = [dimnames{1},' ', dimnames{2},' ' dimnames{3},' ', dimnames{4}] ;
+    if a <=4
+        varatts.coordinates = [dimnames{1},' ', dimnames{2},' ' dimnames{3}] ;
     else
         varatts.coordinates = dimnames{1};
     end
@@ -164,12 +184,12 @@ for a = 1:length(varname)
     if ~isempty(refscale{a}) %do for all but time and oxygen
         varatts.reference_scale = refscale{a};
     end
-    if a > 3 % two-dimensional var
-        didv = did([1]);
-    elseif ilatlon == 1 %other variables, 4 dims
-        didv = did([1,2,4]);
-    elseif ilaton == 2
-        didv = did([1,3,4]);
+    if a == 7 | a == 8% time only dimensional var
+        didv = did(1);
+    elseif a == 1 |a == 5 | a ==6 %variables,2 dims
+        didv = did([2,1]);
+    else % all three dimensions
+        didv = fliplr(did);
     end
     
     %create the variable:
@@ -198,24 +218,18 @@ end
 %variable data
 for a = 1:length(varname)
     eval(['data = ' dataname{a} ';']);
-    
+    disp(dataname{a})
+       
     % reshape velocity, add one more time stamp of empty values at the
     % start to match the lon_ref or lat_ref
-    if a == 3
+    if a == 4
        [row,col,pages]=size(data);
        nan_row = NaN(row,1,pages);
        data = [nan_row,data];
     end
 
-
     %data needs to be kept to 3 decimal places
     data = round(data,3);
-    % if ilatlon > 3
-    %     data(b,:) = dat';
-    % else 
-    %     data(b,:,:,:) = dat';
-    % end
-
 
     netcdf.putVar(fidnc, vidv(a), data);
 end
