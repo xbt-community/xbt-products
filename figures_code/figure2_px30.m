@@ -9,9 +9,10 @@ load Output.mat
 
 % load ssh for the reference section (matching the XBT grid)
 %load /phodnet/share/dong/gulfstream/oleander/
-load ssh4px30.mat ssh_ref_px30
 [nz_ref,ny_ref,nt] = size(temp_ref);
 
+% load ssh to carry through
+load ssh4px30.mat ssh_ref_px30
 % compute the area of each grid cell
 delt_z = diff(depth_ref(1:2));
 Area_GS = nan(nz_ref,ny_ref-1,nt);

@@ -1,7 +1,7 @@
 %%
 clear
 %Packages needed: GSW, M_MAP, cmocean, TS_PACKAGE
-addpath /datasets/work/soop-xbt/work/UOT/programs/TS-lookup/datafiles/TS_PACKAGE_THACKER_noyear_globe_ftp/
+addpath /datasets/work/soop-xbt/work/code/TS-lookup/datafiles/TS_PACKAGE_THACKER_noyear_globe_ftp/
 addpath(genpath('/datasets/work/soop-xbt/work/cowley/matlab_localtools/toolbox/local/gsw_toolbox/'))
 addpath /datasets/work/soop-xbt/work/UOT/programs/MATLAB/seawater_ver3_3/
 %% load the data
@@ -20,7 +20,6 @@ load PX30_data_cleaned.mat
 depth_xbt = double(depth_xbt);
 % fix one bad latitude point, replace with a estimate
 lat_xbt{47}(47) = -23.333;
-
 
 %% focus on only data between 153 and 157.5 longitude and -26.75 to -25.75
 
@@ -62,7 +61,7 @@ for i=1:nt
         tempi = tempi(:,ie);
         ti = ti(ie);
     end
-    if length(loni) < 20
+    if length(loni) < 10
         % skip any transects with less than 20 profiles
         continue
     end
