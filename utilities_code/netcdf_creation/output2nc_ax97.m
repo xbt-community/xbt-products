@@ -32,7 +32,7 @@ outfname = [outfname '/' LINE '_gridded.nc'];
 
 %load the input file:
 try
-    load([inpath '/Output.mat'])
+    load([inpath '/Output_AX97_20250911.mat'])
 catch
     error(['File ' inpath '/Output.mat does not exist'])
 end
@@ -70,7 +70,7 @@ globalatts.soop_line_id = LINE;
 ineg = lon_ref > 180;
 lon_ref(ineg) = lon_ref(ineg)-360;
 % decide if this is a transect that runs north-south or east-west
-[latm,latn] = size(lat_ref);
+[latm,latn] = size(latitude);
 [lonm, lonn] = size(lon_ref);
 if lonn < latn
     % east-west line
@@ -81,8 +81,8 @@ else
 end
 
 %assign the global attributes:
-globalatts.geospatial_lat_min = min(min(lat_ref));
-globalatts.geospatial_lat_max = max(max(lat_ref));
+globalatts.geospatial_lat_min = min(min(latitude));
+globalatts.geospatial_lat_max = max(max(latitude));
 globalatts.geospatial_lon_min = min(min(lon_ref));
 globalatts.geospatial_lon_max = max(max(lon_ref));
 globalatts.geospatial_vertical_min = min(depth_ref);
@@ -112,12 +112,12 @@ if ilatlon == 1
 else
     %north-south
     dimnames = {'time','latitude','depth'};
-    dimdata = {'time_avg','lat_ref','depth_ref'};
+    dimdata = {'time_avg','latitude','depth_ref'};
 end
 time_avgatts = parseNCTemplate('time_attributes.txt');
 depth_refatts = parseNCTemplate('depth_attributes_gridded.txt');
 lon_refatts = parseNCTemplate('longitude_attributes.txt');
-lat_refatts = parseNCTemplate('latitude_attributes.txt');
+latitudeatts = parseNCTemplate('latitude_attributes.txt');
 
 for m=1:length(dimnames)
     eval(['data = ' dimdata{m} ';']);
@@ -135,7 +135,7 @@ end
 if ilatlon ==1
     % east-west
     loc_var = 'latitude';
-    loc_name = 'lat_ref';
+    loc_name = 'latitude';
     loc_units = 'degrees_east';
     loc_range = [-90, 90];
 else
@@ -149,8 +149,8 @@ end
 varname = {loc_var,'temperature','reference_salinity','velocity','surface_dynamic_height',...
     'sea_surface_height','geostrophic_transport','altimetric_ssh_gradient'...
     };
-dataname = {loc_name,'temp_ref','salt_ref','vel_ref','dh0_ref','ssh_ref_px30',...
-    'GStransp', 'GStransp_alt'};
+dataname = {loc_name,'temp_ref','salt_ref','vel_ref','dh0_ref','ssh_ref_ax97',...
+    'BCtransp', 'BCtransp_alt'};
 stdn = {loc_var,'sea_water_temperature','sea_water_practical_salinity',...
     'geostrophic_northward_sea_water_velocity','','sea_surface_height','',...
     ''};
@@ -211,7 +211,7 @@ netcdf.endDef(fidnc);
 % dimension data
 for a = 1:length(dimnames)
     if a == 1
-        eval(['data = ' dimdata{a} ' - datenum(''1950-01-01'');'])
+        eval(['data = ' dimdata{a} '- datenum(''1950-01-01 00:00:00'');'])
     else
         eval(['data = ' dimdata{a} ';']);
     end
@@ -224,7 +224,7 @@ for a = 1:length(varname)
     disp(dataname{a})
        
     % reshape velocity, add one more time stamp of empty values at the
-    % start to match the lon_ref or lat_ref
+    % start to match the lon_ref or latitude
     if a == 4
        [row,col,pages]=size(data);
        nan_row = NaN(row,1,pages);
