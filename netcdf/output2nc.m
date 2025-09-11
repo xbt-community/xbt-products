@@ -88,14 +88,10 @@ globalatts.geospatial_lon_max = max(max(lon_ref));
 globalatts.geospatial_vertical_min = min(depth_ref);
 globalatts.geospatial_vertical_max = max(depth_ref);
 %also handle the other time* fields here
-mintime = NaN*time_avg;
-maxtime = mintime;
-for a = 1:length(time_xbt)
-    mintime(a) = min(time_xbt{a});
-    maxtime(a) = max(time_xbt{a});
-end
-globalatts.time_coverage_start = datestr(min(mintime),'dd-mm-yyyy HH:MM:SS');
-globalatts.time_coverage_end = datestr(max(maxtime),'dd-mm-yyyy HH:MM:SS');
+mintime = min(time_avg);
+maxtime = max(time_avg);
+globalatts.time_coverage_start = datestr(mintime,'dd-mm-yyyy HH:MM:SS');
+globalatts.time_coverage_end = datestr(maxtime,'dd-mm-yyyy HH:MM:SS');
 
 %write out global attributes:
 vid = netcdf.getConstant('NC_GLOBAL'); %get the global attributes reference
@@ -214,7 +210,11 @@ netcdf.endDef(fidnc);
 %% Now the data
 % dimension data
 for a = 1:length(dimnames)
-    eval(['data = ' dimdata{a} ';']);
+    if a == 1
+        eval(['data = ' dimdata{a} ' - datenum(''1950-01-01'');'])
+    else
+        eval(['data = ' dimdata{a} ';']);
+    end
     netcdf.putVar(fidnc, vid(a), data);
 end
 

@@ -8,10 +8,10 @@ S, abstract                     = The Ship of Opportunity XBT Network has been m
 S, comment                      = 
 S, soop_line_id 		=
 S, instrument                   = XBT, Expendable Bathythermograph
-S, keywords                     = EasyXBT, XBT, gridded product, SOOP XBT lines, boundary currents
+S, keywords                     = EasyXBT, GOXBT, XBT gridded product, SOOP XBT lines, boundary currents
 S, references                   = http://www.aoml.noaa.gov/phod/hdenxbt/; https://portal.aodn.org.au/; https://sio-argo.ucsd.edu/RG_Climatology.html; https://doi.org/10.48670/moi-00149; https://apdrc.soest.hawaii.edu/data/
 S, history                      = 
-S, source                       = Upper ocean temperature profiles, Argo salinity profiles, Altimetry surface data.
+S, source                       = Upper ocean XBT temperature profiles, Argo salinity profiles, Altimetry surface data.
 
 % where
 % geospatial_bounds
@@ -34,9 +34,9 @@ D, time_coverage_start          =
 D, time_coverage_end            = 
 
 % who
-S, publisher_name               = Ship Of Opportunity Data Management Team
-S, creator                      = Rebecca Cowley
-S, creator_email                = rebecca.cowley@csiro.au
+S, publisher_name               = Ship Of Opportunity XBT Data Management Team
+S, creator                      = Rebecca Cowley; Marlos Goes
+S, creator_email                = rebecca.cowley@csiro.au; marlos.goes@noaa.gov
 
 
 % how
