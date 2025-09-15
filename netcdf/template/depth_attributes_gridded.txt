@@ -1,8 +1,0 @@
-S, standard_name             = depth
-S, long_name                 = depth
-S, units                     = m
-S, reference_datum           = sea surface
-S, axis			     = Z
-S, positive                  = down
-N, valid_min                 = -5.0
-N, valid_max                 = 12000.0
