@@ -35,8 +35,8 @@ D, time_coverage_end            =
 
 % who
 S, publisher_name               = Ship Of Opportunity XBT Data Management Team
-S, creator                      = Rebecca Cowley; Marlos Goes
-S, creator_email                = rebecca.cowley@csiro.au; marlos.goes@noaa.gov
+S, creator                      = Rebecca Cowley; Marlos Goes; Jared Brzenski
+S, creator_email                = rebecca.cowley@csiro.au; marlos.goes@noaa.gov; jabrzenski@ucsd.edu
 
 
 % how
