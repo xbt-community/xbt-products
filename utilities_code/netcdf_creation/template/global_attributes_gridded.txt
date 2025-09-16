@@ -40,7 +40,7 @@ S, creator_email                = rebecca.cowley@csiro.au; marlos.goes@noaa.gov;
 
 
 % how
-S, citation                = The citation in a list of references is: "TBA"
+S, citation                = The citation in a list of references is: Goes, M., Cowley, R., & Brzenski, J. (2025). GOXBT: A high-resolution boundary current product from Gridded Observations of eXpendable BathyThermograph (XBT) transects (Version 1) [Data set]. Zenodo. https://doi.org/10.5281/zenodo.17128135
 S, acknowledgement         = Data were collected and made publicly available by CSIRO, AOML, Scripps Institute of Oceanography, Parthenope University and other national programs that contribute to these data collections.
 S, disclaimer              = Data, products and services from the XBT-DMT are provided "as is" without any warranty as to fitness for a particular purpose.
 S, license                 = http://creativecommons.org/licenses/by/4.0/
